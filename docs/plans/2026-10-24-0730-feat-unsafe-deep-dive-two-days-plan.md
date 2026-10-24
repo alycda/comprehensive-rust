@@ -76,7 +76,7 @@ This plan covers the whole Unsafe Deep Dive in this fork; the breakdown below is
 
 **Course structure and timing**
 
-- R1. The Unsafe Deep Dive is two sessions, Day 1 through Pinning and Day 2 from FFI, each with its own 300-minute target and its own outline, and each day's outline reports a total at or above its target as the tooling counts it, breaks included, when the React Native segment is included; the course-structure page's outline directive is corrected to name the course as `welcome.md` declares it, since today it names a course that does not exist and renders nothing.
+- R1. The Unsafe Deep Dive is two sessions, Day 1 through Pinning and Day 2 from FFI, each with its own 300-minute target and its own outline, and each day's outline reports a total at or above its target as the tooling counts it, breaks included; the course-structure page's outline directive is corrected to name the course as `welcome.md` declares it, since today it names a course that does not exist and renders nothing.
 - R2. Every page listed under the Unsafe section of the table of contents carries a `minutes:` value.
 - R3. Each written page not currently reachable from the table of contents is either listed in the segment its content belongs to or folded into that segment's index page, and a page that duplicates a listed page is removed.
 - R4. The six title-only pages carry slide content and speaker notes consistent with the segment around them.
@@ -127,7 +127,7 @@ This plan covers the whole Unsafe Deep Dive in this fork; the breakdown below is
 - F1. Day 2 boundary chain
   - **Trigger:** Day 2 begins after the Pinning segment and its cross-link slide.
   - **Actors:** A1, A2
-  - **Steps:** Wrap `abs`, `rand` and `qsort` from Rust. Write a safe wrapper over an opaque handle. Export the running example to C and read the generated header aloud. Call it from a C harness with hostile input first. Complete the Python scaffold from the header. Complete the JavaScript scaffold against the wasm32 build. Tooling slide, then React Native if kept.
+  - **Steps:** Wrap `abs`, `rand` and `qsort` from Rust. Write a safe wrapper over an opaque handle. Export the running example to C and read the generated header aloud. Call it from a C harness with hostile input first. Complete the Python scaffold from the header. Complete the JavaScript scaffold against the wasm32 build. The tooling slide closes the day.
   - **Outcome:** Every student has one library crossing four boundaries, two of them in languages they did not know that morning.
   - **Covered by:** R6 to R18, R20, R21, R33
 
@@ -245,12 +245,12 @@ Product Contract preservation: changed KD8, KD13, R3, R18, R19, AE4 and the stre
 
 - KTD1. **Day 2 code lives in a nested Cargo workspace rooted at `src/unsafe-deep-dive/Cargo.toml`, outside the root workspace.** The zero-byte file becomes that workspace's manifest with its own `Cargo.lock`, and `src/unsafe-deep-dive/.cargo/config.toml` sets the target directory to `../../target/unsafe-deep-dive` so build output never sits under `src/`, which mdbook copies into the book. Adding a member to the root workspace invalidates `MODULE.bazel.lock`, which `lint.yml` enforces, and regenerating it needs Bazel; the bare-metal crates already use this out-of-workspace pattern. Governs R25, R33.
 - KTD2. **The one-command check is a Rust binary crate, `ffi-check`, in that workspace: `cargo run -p ffi-check` from `src/unsafe-deep-dive/`.** It builds the host cdylib and the wasm32 build once, regenerates the header with cbindgen in verify mode, compiles the C harness with an rpath to the absolute library directory, runs the Python files with `python3 -I`, runs the JavaScript files with Node, exercises the student scaffolds (expecting their "not done" exit) and then the solutions, and fails when a required tool is absent unless `ALLOW_SKIP=1` is set. Chosen over an xtask subcommand because `xtask/src/main.rs` is an upstream file the fork would then conflict on at every sync, and over a shell script because the check must run identically on macOS, Linux and WSL2. Library and wasm paths come from `cargo build --message-format=json`, never a hard-coded `target/debug`. Governs R25, R32.
-- KTD3. **Two crates share one header: `textlib` (the solution, `rlib` plus `cdylib`) and `textlib-exercise` (the student crate, every exported signature present with `todo!()` bodies).** Identical signatures make every student's generated header identical to the committed `include/textlib.h`, which the slides include by anchor and the check verifies. The Python and JavaScript scaffolds take the library path from an environment variable the check sets, defaulting to the student's build and falling back to the solution build when it is missing (R33). The running example (KD8) is the kata (`add`, `sum`) plus the three Advent of Code solvers, each behind a puzzle-neutral export name and a shared status enum, so the later generic replacement touches one module and the expected answers only. The header is generated by the cbindgen command-line tool, pinned at 0.29.x, rather than by cbindgen as a build-script library: the tool is already on the student's required list, running it by hand makes the header an artifact students read aloud, and the check's verify mode catches drift either way.
+- KTD3. **Three crates, one header: `textlib-core` (an `rlib` holding the kata and the solvers, no exported symbols), `textlib` (the solution `cdylib`: the `ffi` module, `alloc`/`free` and the status enum, over `textlib-core`) and `textlib-exercise` (the student `cdylib`, every exported signature present with `todo!()` bodies, depending on `textlib-core` only, never on `textlib`).** The exports stay out of the shared `rlib` because a student crate that linked `textlib` itself would carry two definitions of every exported name and fail to link under `--release`, `codegen-units = 1` or LTO. Identical signatures make every student's generated header identical to the committed `include/textlib.h`, which the slides include by anchor and the check verifies. The Python and JavaScript scaffolds take the library path from an environment variable the check sets, defaulting to the solution build; the check names the student's build explicitly when it wants that one (R33). The running example (KD8) is the kata (`add`, `sum`) plus the three Advent of Code solvers, each behind a puzzle-neutral export name and a shared status enum, so the later generic replacement touches one module and the expected answers only. The header is generated by the cbindgen command-line tool, pinned at 0.29.x, rather than by cbindgen as a build-script library: the tool is already on the student's required list, running it by hand makes the header an artifact students read aloud, and the check's verify mode catches drift either way.
 - KTD4. **One string surface across C, Python and wasm: UTF-8 bytes as `(*const u8, usize)` in, a `#[repr(C)]` status enum back, results through out-parameters.** Research verified that `*const c_char` exports work on wasm but force the JavaScript caller to write a NUL terminator and give the callee an unbounded scan, that a struct returned by value gains a hidden pointer parameter on wasm, and that Rust 1.89 made the spec C ABI the wasm default, under which pointer plus length is unaffected and structs by value are not. Empty input is valid: `len == 0` returns status OK and result 0 without reading the pointer, so null with length 0 is also OK. The NUL-terminated `CStr` ingress stays in the wrap-C lessons (R6 and the existing `abs`, `rand` slides) and appears once in R7's slide as the contrast that motivates pointer plus length. Governs R7, R8, R15, R16, R20.
 - KTD5. **Python reads the committed header through a one-line filter that drops preprocessor lines, then `ffi.cdef` and `ffi.dlopen` in ABI mode.** cffi rejects every `#` line, including cbindgen's include guard. One header stays the contract for C, Python and the wasm addendum, and the filter line itself teaches that cffi reads declarations, not a preprocessor. Status codes are a C enum so their names appear on the library object; `cbindgen.toml` sets `language = "C"` and `usize_is_size_t = true` so Python and C see `size_t`. Chosen over a second cffi-specific header, which would split the contract. Governs R15, R21, R24.
 - KTD6. **The wasm exercise targets `wasm32-unknown-unknown` in a debug build, driven from a plain `.mjs` file under Node 22 or newer with `readFile` and `WebAssembly.instantiate` and no flags.** The exercise page carries a contract table that plays the header's role for linear memory: pointers are byte offsets into the exported memory, `size_t` is 4 bytes, values are little-endian, address 0 is valid so null checks are convention only, every `alloc(len)` pairs with `free(ptr, len)`, and `memory.buffer` must be re-read after every call because allocation can grow memory and detach cached views. Exported `alloc` and `free` use `Layout` and guard zero length. A panic is a trap (`RuntimeError: unreachable`) that nothing catches, which the panics slide (R9) states alongside the native abort. `wasm32-wasip1` and the component model are one line each on the tooling slide (R17). Governs R16, R21, R24.
-- KTD7. **Two sessions in the table of contents: `welcome.md` becomes Day 1 with `target_minutes: 300`, and a new top-level `welcome-day-2.md` opens Day 2 with `session: Day 2` and `target_minutes: 300`.** Day 2 is five top-level segments, Wrapping C, Exporting to C, Python, WebAssembly, Tooling, so the timing tool counts 40 break minutes; the stretch segment would be a sixth. The course-structure page's directive is corrected to the declared course name. Totals are read with the `course-schedule` binary, because the rendered outline never compares against the target. Governs R1, R2, R19.
-- KTD8. **Minute estimates by slide kind until the dry run: 3 for a concept slide, 5 for a slide with live code, 8 for a slide with a live-coding beat, 10 for the cross-link and tooling slides, 30 plus 15 for the C-glue exercise and its solution, 20 and 30 for the Python and wasm exercises, seeded from the workshop's observed 30 and 35.** The projection (Day 1 about 380 rendered, Day 2 about 345) puts both days over target, so the demotion order matters more than the stretch: Day 2 demotes R12, R13, then R17, then the two cross-links; Day 1 demotes the case study, then the three soundness-proof children, then `motivations.md`. Governs R2, R19.
+- KTD7. **Two sessions in the table of contents: `welcome.md` becomes Day 1 with `target_minutes: 300`, and a new top-level `welcome-day-2.md` opens Day 2 with `session: Day 2` and `target_minutes: 300`.** Day 2 is five top-level segments, Wrapping C, Exporting to C, Python, WebAssembly, Tooling, so the timing tool counts 40 break minutes; the stretch segment would be a sixth. The course-structure page's directive is corrected to the declared course name. Totals are read with the `course-schedule` binary, because the rendered outline never compares against the target; the binary today returns at the first course without a target (Chromium) and never reaches the Unsafe part, so U1 makes it continue past such courses. Governs R1, R2, R19.
+- KTD8. **Minute estimates by slide kind until the dry run: 3 for a concept slide, 5 for a slide with live code, 8 for a slide with a live-coding beat, 10 for the cross-link and tooling slides, 30 plus 15 for the C-glue exercise and its solution, 20 and 30 for the Python and wasm exercises, seeded from the workshop's observed 30 and 35.** The projection (Day 1 about 380 rendered, Day 2 about 345) puts both days over target, so the demotion order matters more than the stretch: Day 2 demotes R12, R13, then R17; Day 1 demotes the case study, then the three soundness-proof children, then `motivations.md`, then the two cross-link slides, which are Day 1 pages in the Initialization and Pinning segments. Governs R2, R19.
 - KTD9. **Students get the course and the code by cloning this branch of the fork before Day 1; exercise pages name the directory to work in.** Nothing is published, and the exerciser zip only exists after CI's build. Day 2 exercise pages are `exercise.md` and `solution.md` inside their own directories (`ffi/c-glue/`, `ffi/python/`, `ffi/wasm/`), which the slide-size web test exempts by filename, and they carry no `<!-- File -->` markers, so the exerciser's stem-only output directories never collide. Governs R20, R21, R27.
 - KTD10. **Supported student platforms are macOS, Linux and WSL2; native Windows is out, as in the workshop.** The setup page's Python route is a virtual environment (`python3 -m venv`), because Debian and Ubuntu refuse system-wide `pip` under PEP 668 and Apple's bundled Python is below cffi's 3.10 floor; the self-check warns when the working directory is under `/mnt/`. Governs R27, R28, R29.
 - KTD11. **Orphan handling (R3): `introduction/defining-unsafe-rust.md` is deleted as a duplicate of the listed `introduction/definition.md`; `ffi/README.md` and `pinning/README.md` are folded into `ffi.md` and `pinning.md`; `motivations.md` is listed as the first Introduction slide; `case-studies.md` and its tokio page are listed as the last Day 1 segment.** The Pinning README's note not to list it addresses upstream's merge sequence, which does not bind this fork.
@@ -265,11 +265,14 @@ Three shapes carry the plan: where the code lives and who consumes it, the wasm 
 ```mermaid
 flowchart TB
   subgraph W["src/unsafe-deep-dive (nested Cargo workspace)"]
-    TL["textlib (solution)\nrlib + cdylib"]
-    TE["textlib-exercise (student)\nsame signatures, todo! bodies"]
+    TC["textlib-core\nrlib, no exports"]
+    TL["textlib (solution)\ncdylib"]
+    TE["textlib-exercise (student)\ncdylib, same signatures, todo! bodies"]
     H["include/textlib.h\ncommitted, cbindgen --verify"]
     CHK["ffi-check\ncargo run -p ffi-check"]
   end
+  TC --> TL
+  TC --> TE
   TL --> H
   TE --> H
   H --> C["C harness\n(scaffold + solution)"]
@@ -319,7 +322,7 @@ flowchart TB
 - Translations: no `po/` change is needed for new English pages; shell and install blocks carry the `mdbook-xgettext: skip` comment as the bare-metal pages do.
 - CI: the Bazel test gate, the lockfile gate and `cargo clippy` over the root workspace see no change; the new workflow is additive.
 - The exerciser zip: Day 2 pages carry no file markers, so the zip's contents are unchanged and students use the clone instead.
-- Upstream sync: the fork's edits to `SUMMARY.md`, the six stubs and the two cross-link insertion points are the files upstream is most likely to touch next in this WIP module; `welcome.md`'s frontmatter and the new Day 2 welcome are the merge points to watch.
+- Upstream sync: the fork's edits to `SUMMARY.md`, the six stubs and the two cross-link insertion points are the files upstream is most likely to touch next in this WIP module; `welcome.md`'s frontmatter, the new Day 2 welcome and the two-word change in `mdbook-course/src/bin/course-schedule.rs` are the merge points to watch.
 
 ### Risks
 
@@ -327,7 +330,7 @@ flowchart TB
 - Upstream sync conflicts in `SUMMARY.md` and the stub pages: accepted, since KD4 already chose upstream's order to keep them small; the merge points are listed above.
 - Timing projections are estimates until U15: mitigated by the demotion orders in KTD8 and the per-day targets; the stretch segment is deliberately unwritten until needed.
 - Stretch-segment format unresolved: accepted, because U16 runs only on a shortfall and the poll may settle first.
-- Advent of Code content policy: mitigated by R22 and by the check refusing any input file larger than a statement example is not built; a reviewer reads each test fixture instead. Considered and not built: an automated fixture-size guard, because the fixtures are hand-written and few.
+- Advent of Code content policy: mitigated by R22; a reviewer reads each test fixture. Considered and not built: an automated fixture-size guard, because the fixtures are hand-written and few.
 - Formatter behaviour on `python` and `javascript` fences is unverified until tools are installed: handled by the deferred note above; worst case is wrapping fences in `dprint-ignore`.
 
 ### Sequencing
@@ -350,7 +353,7 @@ Phase A (Day 1, no code): U1, U2, U3. Phase B (code, no slides): U4, U5, U6, U7,
 | U1 | Split into two sessions and fix timing plumbing | `src/SUMMARY.md`, `src/unsafe-deep-dive/welcome.md`, `src/unsafe-deep-dive/welcome-day-2.md`, `src/running-the-course/course-structure.md` | none |
 | U2 | Time Day 1, write stubs, handle orphans, add cross-links | `src/unsafe-deep-dive/**` (Day 1 pages) | U1 |
 | U3 | Rewrite setup page and add self-check | `src/unsafe-deep-dive/setup.md`, `src/unsafe-deep-dive/setup/self-check.sh` | none |
-| U4 | Nested workspace and `textlib` solution crate with header | `src/unsafe-deep-dive/Cargo.toml`, `src/unsafe-deep-dive/.cargo/config.toml`, `src/unsafe-deep-dive/ffi/code/textlib/**`, `src/unsafe-deep-dive/ffi/code/include/textlib.h` | none |
+| U4 | Nested workspace, `textlib-core` and the `textlib` solution crate with header | `src/unsafe-deep-dive/Cargo.toml`, `src/unsafe-deep-dive/.cargo/config.toml`, `src/unsafe-deep-dive/ffi/code/textlib-core/**`, `src/unsafe-deep-dive/ffi/code/textlib/**`, `src/unsafe-deep-dive/ffi/code/include/textlib.h` | none |
 | U5 | Student crate and C harness | `src/unsafe-deep-dive/ffi/code/textlib-exercise/**`, `src/unsafe-deep-dive/ffi/code/c/**` | U4 |
 | U6 | Python scaffold and solution | `src/unsafe-deep-dive/ffi/code/python/**` | U4 |
 | U7 | wasm driver scaffold, solution and contract tests | `src/unsafe-deep-dive/ffi/code/js/**` | U4 |
@@ -362,7 +365,7 @@ Phase A (Day 1, no code): U1, U2, U3. Phase B (code, no slides): U4, U5, U6, U7,
 | U13 | wasm slide and exercise pages | `src/unsafe-deep-dive/ffi/wasm.md`, `ffi/wasm/exercise.md`, `solution.md` | U7, U11 |
 | U14 | Tooling slide and FFI index page | `src/unsafe-deep-dive/ffi/tooling.md`, `src/unsafe-deep-dive/ffi.md` | U1 |
 | U15 | Dry run, timing correction and cut decision | `minutes:` frontmatter across the deep dive, `src/SUMMARY.md` | U2, U9 to U14 |
-| U16 | Stretch: bytes with a schema (conditional) | `src/unsafe-deep-dive/ffi/bytes-with-schema/**`, `ffi/code/textlib/**` | U15 |
+| U16 | Stretch: bytes with a schema (conditional) | `src/unsafe-deep-dive/ffi/bytes-with-schema/**`, `ffi/code/textlib-core/**`, `ffi/code/textlib/**` | U15 |
 | U17 | Fork CI workflow | `.github/workflows/unsafe-deep-dive.yml` | U8 |
 
 ### U1. Split into two sessions and fix timing plumbing
@@ -370,16 +373,17 @@ Phase A (Day 1, no code): U1, U2, U3. Phase B (code, no slides): U4, U5, U6, U7,
 - **Goal:** The deep dive is two 300-minute sessions the course tooling can report on.
 - **Requirements:** R1, R2 (structure), KD3, KTD7.
 - **Dependencies:** none.
-- **Files:** `src/SUMMARY.md`, `src/unsafe-deep-dive/welcome.md`, `src/unsafe-deep-dive/welcome-day-2.md` (new), `src/running-the-course/course-structure.md`.
+- **Files:** `src/SUMMARY.md`, `src/unsafe-deep-dive/welcome.md`, `src/unsafe-deep-dive/welcome-day-2.md` (new), `src/running-the-course/course-structure.md`, `mdbook-course/src/bin/course-schedule.rs`.
 - **Approach:**
   1. `welcome.md`: `session: Day 1`, `target_minutes: 300`, a `minutes:` value, `## Schedule` with `{{%session outline%}}` as `src/welcome-day-1.md` does.
   2. New top-level `welcome-day-2.md` with `session: Day 2`, `target_minutes: 300`, no `course:`, and the Day 2 schedule.
-  3. Reorder the `# Unsafe` part of `SUMMARY.md`: Day 1 segments as today; then the Day 2 welcome; then five top-level segments (KTD7) with the existing FFI pages distributed under Wrapping C and the new pages as placeholders U9 to U14 fill.
+  3. Reorder the `# Unsafe` part of `SUMMARY.md`: Day 1 segments as today; then the Day 2 welcome; then five top-level segments (KTD7): `ffi.md` is the chapter line of Wrapping C, so it renders as that segment's index (U14 fills it); the existing FFI pages sit under Wrapping C; the new pages are placeholders U9 to U14 fill.
   4. Change `{{%course outline Unsafe}}` to the declared course name.
+  5. In `mdbook-course/src/bin/course-schedule.rs`, replace `return` with `continue` where `session_summary` and `pr_summary` skip a course whose target is zero: today the binary stops at Chromium, which has no target and sits before the Unsafe part, so it never prints the deep dive. No manifest or lockfile changes, so KTD1's gates are untouched.
 - **Patterns to follow:** `src/welcome-day-1.md`, `src/welcome-day-1-afternoon.md`, `src/SUMMARY.md` lines for Fundamentals Day 1.
 - **Test scenarios:**
   - Building the book succeeds and the Day 1 and Day 2 welcome pages each render a session outline table.
-  - `course-schedule` lists two sessions for the course, each with a 300-minute target.
+  - `course-schedule` prints past Chromium and lists two sessions for the course, each with a 300-minute target.
   - The course-structure page no longer renders the "not found" text for the deep dive outline.
   - A nested chapter carrying `session:` fails the build; the two session frontmatters sit only on top-level chapters.
 - **Verification:** both sessions appear in the schedule output with their targets, and the course-structure page shows the deep dive's outline.
@@ -399,7 +403,7 @@ Phase A (Day 1, no code): U1, U2, U3. Phase B (code, no slides): U4, U5, U6, U7,
 - **Patterns to follow:** `safety-preconditions/ascii.md` for an example slide; `pinning.md` for an index page; `STYLE.md` slide rules.
 - **Test scenarios:**
   - Every page under the Unsafe part of the table of contents carries a `minutes:` value (a script over `SUMMARY.md` finds none missing).
-  - No page under `src/unsafe-deep-dive/` is a licence comment plus a title only.
+  - No Day 1 page under `src/unsafe-deep-dive/` is a licence comment plus a title only; `ffi.md` and the `ffi/` directory are excluded because U9 and U14 fill those two stubs.
   - The speaker-notes toggle works on `pinning.md` and `references.md` (balanced `<details>`).
   - `defining-unsafe-rust.md` no longer exists and `definition.md` is still listed.
 - **Verification:** the Day 1 session renders about 380 rendered minutes before the dry run with no untimed slide, and the book builds.
@@ -422,21 +426,21 @@ Phase A (Day 1, no code): U1, U2, U3. Phase B (code, no slides): U4, U5, U6, U7,
   - Without a C linker, the compile-and-link row is red even though a compiler binary exists.
 - **Verification:** the page renders the same tool list the self-check tests, and the check runs on Linux here; macOS and WSL2 rows are confirmed in U15's dry run.
 
-### U4. Nested workspace and the `textlib` solution crate with header
+### U4. Nested workspace, `textlib-core` and the `textlib` solution crate with header
 
 - **Goal:** The running example exists as a tested library with a committed C header.
 - **Requirements:** R7, R8, R22, R23, R25, KD8, KTD1, KTD3, KTD4, KTD12.
 - **Dependencies:** none.
-- **Files:** `src/unsafe-deep-dive/Cargo.toml` (becomes the workspace root), `src/unsafe-deep-dive/.cargo/config.toml`, `src/unsafe-deep-dive/Cargo.lock`, `src/unsafe-deep-dive/ffi/code/textlib/Cargo.toml`, `src/unsafe-deep-dive/ffi/code/textlib/cbindgen.toml`, `src/unsafe-deep-dive/ffi/code/textlib/src/lib.rs`, `src/unsafe-deep-dive/ffi/code/textlib/src/{kata,mull,trebuchet,historian,ffi}.rs`, `src/unsafe-deep-dive/ffi/code/textlib/tests/boundary.rs`, `src/unsafe-deep-dive/ffi/code/include/textlib.h`.
+- **Files:** `src/unsafe-deep-dive/Cargo.toml` (becomes the workspace root), `src/unsafe-deep-dive/.cargo/config.toml`, `src/unsafe-deep-dive/Cargo.lock`, `src/unsafe-deep-dive/ffi/code/textlib-core/Cargo.toml`, `src/unsafe-deep-dive/ffi/code/textlib-core/src/{lib,kata,mull,trebuchet,historian}.rs`, `src/unsafe-deep-dive/ffi/code/textlib/Cargo.toml`, `src/unsafe-deep-dive/ffi/code/textlib/cbindgen.toml`, `src/unsafe-deep-dive/ffi/code/textlib/src/lib.rs`, `src/unsafe-deep-dive/ffi/code/textlib/tests/boundary.rs`, `src/unsafe-deep-dive/ffi/code/include/textlib.h`.
 - **Approach:**
   1. Workspace root manifest with `[workspace] members` and `resolver = "2"`; target directory redirected (KTD1); `.gitignore` entry not needed because the repo root already ignores `target/`.
-  2. `textlib`: `crate-type = ["rlib", "cdylib"]`; pure Rust modules for the kata and the three solvers, rewritten from the workshop (statement examples only, R22); an `ffi` module with the exports, ANCHOR comments for the slides, puzzle-neutral names, a `#[repr(C)]` status enum, out-parameters, the four-step pointer-plus-length ingress, checked arithmetic, `catch_unwind` as the backstop converting to a panic status on native, and `alloc`/`free` exports (KTD4, KTD6).
+  2. `textlib-core` (`rlib`, no exported symbols): pure Rust modules for the kata and the three solvers, rewritten from the workshop (statement examples only, R22). `textlib` (`crate-type = ["cdylib"]`, depends on `textlib-core`): the exports, ANCHOR comments for the slides, puzzle-neutral names, a `#[repr(C)]` status enum, out-parameters, the four-step pointer-plus-length ingress, checked arithmetic, `catch_unwind` as the backstop converting to a panic status on native, and `alloc`/`free` exports (KTD4, KTD6).
   3. The Trebuchet solver scans by character so `é1` returns the solver-failure status, not a panic (KTD12); the byte-offset version is kept only as a doc-comment snippet the panics slide includes.
   4. `cbindgen.toml` per KTD5; header committed and regenerated with `--verify`.
 - **Execution note:** write the boundary tests first for the status contract; the solver tests port the workshop's statement-example tests.
 - **Patterns to follow:** `alycda/rustconf2026:days/2024-12-01/src/c_api.rs` for ingress and status codes; `src/unsafe-rust/exercise.rs` for ANCHOR layout; `third_party/cxx/blobstore/build.rs` only as a `rerun-if-changed` precedent.
 - **Test scenarios:**
-  - Covers AE1. Null pointer with any length returns the input-refused status; bytes `[0xff, 0xfe]` return the invalid-UTF-8 status; neither writes the out-parameter.
+  - Covers AE1. Null pointer with nonzero length returns the input-refused status; bytes `[0xff, 0xfe]` return the invalid-UTF-8 status; neither writes the out-parameter.
   - Empty input (`len == 0`, any pointer including null) returns OK with result 0 (KTD4).
   - Each solver's statement example returns the published answer through the out-parameter with status OK.
   - Covers AE6. A line containing `é1` returns the solver-failure status rather than panicking.
@@ -444,7 +448,7 @@ Phase A (Day 1, no code): U1, U2, U3. Phase B (code, no slides): U4, U5, U6, U7,
   - `alloc(0)` returns a non-null pointer and `free(ptr, 0)` is a no-op; `alloc(n)` then `free(ptr, n)` round-trips without a double free under the test allocator.
   - The regenerated header equals the committed header.
   - Building for `wasm32-unknown-unknown` succeeds and the module's export list equals the header's function names plus `memory`, `alloc` and `free`.
-- **Verification:** `cargo test -p textlib` passes in the nested workspace, the header verifies, and the wasm build produces the expected exports.
+- **Verification:** `cargo test -p textlib-core -p textlib` passes in the nested workspace, the header verifies, and the wasm build produces the expected exports.
 
 ### U5. Student crate and C harness
 
@@ -453,7 +457,7 @@ Phase A (Day 1, no code): U1, U2, U3. Phase B (code, no slides): U4, U5, U6, U7,
 - **Dependencies:** U4.
 - **Files:** `src/unsafe-deep-dive/ffi/code/textlib-exercise/Cargo.toml`, `src/unsafe-deep-dive/ffi/code/textlib-exercise/src/lib.rs`, `src/unsafe-deep-dive/ffi/code/c/harness.c`, `src/unsafe-deep-dive/ffi/code/c/README.md`.
 - **Approach:**
-  1. `textlib-exercise` depends on `textlib`'s pure Rust modules (rlib) and re-exports the same `extern "C"` signatures with `todo!()` bodies and a numbered TODO walk-through in comments (null check, slice from raw parts, UTF-8 validation, hand over, write the out-parameter).
+  1. `textlib-exercise` (`cdylib`) depends on `textlib-core` only, never on `textlib`, and defines the same `extern "C"` signatures with `todo!()` bodies and a numbered TODO walk-through in comments (null check, slice from raw parts, UTF-8 validation, hand over, write the out-parameter).
   2. One C harness serves scaffold and solution: it asserts the hostile cases first (null, invalid UTF-8, empty), then the statement examples, then `é1`; against the scaffold it aborts with Rust's cannot-unwind message, which is AE2's step 0.
   3. Build line uses `-L` and `-Wl,-rpath` with the absolute library directory (research verified the run-time failure without rpath on Linux) and includes the header.
 - **Patterns to follow:** `alycda/rustconf2026:exercises/ex2-c-glue/src/lib.rs` and `.github/ci/exercises/ex2-c-glue/tests/c/test_glue.c`.
@@ -464,6 +468,7 @@ Phase A (Day 1, no code): U1, U2, U3. Phase B (code, no slides): U4, U5, U6, U7,
   - Covers AE6. The `é1` assert expects the solver-failure status and passes.
   - Linking without the rpath and running from another directory fails with the loader's cannot-open error, which the exercise page uses as a teaching beat.
   - The header generated from the scaffold is byte-identical to the committed header.
+  - The student crate links under `--release` and with `codegen-units = 1` as well as under `dev`; no duplicate exported symbol is reported.
 - **Verification:** the harness passes against the solution library and aborts against the scaffold, via the check (U8).
 
 ### U6. Python scaffold and solution
@@ -473,7 +478,7 @@ Phase A (Day 1, no code): U1, U2, U3. Phase B (code, no slides): U4, U5, U6, U7,
 - **Dependencies:** U4.
 - **Files:** `src/unsafe-deep-dive/ffi/code/python/scaffold.py`, `src/unsafe-deep-dive/ffi/code/python/solution.py`, `src/unsafe-deep-dive/ffi/code/python/README.md`.
 - **Approach:**
-  1. Scaffold: locate the library from the environment variable with the student-then-solution default, read the committed header, leave two blanks: the filter-and-`cdef` line and the call that passes `(bytes, len)` and reads the out-parameter; exit with a distinct "not done" code while a blank remains.
+  1. Scaffold: locate the library from the environment variable, defaulting to the solution build (R33), read the committed header, leave two blanks: the filter-and-`cdef` line and the call that passes `(bytes, len)` and reads the out-parameter; exit with a distinct "not done" code while a blank remains.
   2. Solution: the same file completed; prints the statement-example answers; asserts `ffi.NULL` and a non-UTF-8 `bytes` return the expected statuses by enum name.
   3. Run line is the virtual environment's interpreter with `-I` (KTD10).
 - **Patterns to follow:** `alycda/rustconf2026:.github/ci/exercises/ex3-bindings/python/bindings.py`.
@@ -492,7 +497,7 @@ Phase A (Day 1, no code): U1, U2, U3. Phase B (code, no slides): U4, U5, U6, U7,
 - **Dependencies:** U4.
 - **Files:** `src/unsafe-deep-dive/ffi/code/js/scaffold.mjs`, `src/unsafe-deep-dive/ffi/code/js/solution.mjs`, `src/unsafe-deep-dive/ffi/code/js/contract.test.mjs`, `src/unsafe-deep-dive/ffi/code/js/README.md`.
 - **Approach:**
-  1. Scaffold provides `readFile`, `WebAssembly.instantiate`, a `TextEncoder`, a hand-written status table, and leaves the alloc, write, call, out-parameter read and both frees for the student, with the re-read of `memory.buffer` called out in a comment.
+  1. Scaffold locates the wasm module from the environment variable, defaulting to the solution build (R33), provides `readFile`, `WebAssembly.instantiate`, a `TextEncoder`, a hand-written status table, and leaves the alloc, write, call, out-parameter read and both frees for the student, with the re-read of `memory.buffer` called out in a comment.
   2. Solution completes it; `TextDecoder` with `fatal: true` for any text out.
   3. `contract.test.mjs` runs under `node --test`: export names equal the header's functions plus `memory`, `alloc`, `free`; a cached `Uint8Array` is detached after an input large enough to grow memory; a panic surfaces as `RuntimeError: unreachable`.
 - **Patterns to follow:** the verified driver shape in the framework research dossier; no wasm-bindgen.
@@ -616,7 +621,7 @@ Phase A (Day 1, no code): U1, U2, U3. Phase B (code, no slides): U4, U5, U6, U7,
 - **Goal:** The segment opens with its arc and closes with the generators by direction.
 - **Requirements:** R17, R3 (the FFI README fold).
 - **Dependencies:** U1.
-- **Files:** `src/unsafe-deep-dive/ffi/tooling.md` (new), `src/unsafe-deep-dive/ffi.md` (stub to index), `src/unsafe-deep-dive/ffi/README.md` (delete after folding).
+- **Files:** `src/unsafe-deep-dive/ffi/tooling.md` (new), `src/unsafe-deep-dive/ffi.md` (stub to the Wrapping C segment index, placed by U1), `src/unsafe-deep-dive/ffi/README.md` (delete after folding).
 - **Approach:**
   1. `ffi.md`: the README's outline sentence, the Day 2 arc, `{{%segment outline}}`.
   2. `tooling.md`: bindgen, cbindgen, cxx and autocxx, UniFFI, PyO3, wasm-bindgen, the component model and `wasm32-wasip1`, JSI and TurboModules as the React Native boundary; one line each, with "generated code is the source of truth" as the speaker note.
@@ -645,7 +650,7 @@ Phase A (Day 1, no code): U1, U2, U3. Phase B (code, no slides): U4, U5, U6, U7,
 - **Goal:** When Day 2 runs short, a structured result crosses the boundary as serialised bytes in a format with libraries in C, Python and JavaScript.
 - **Requirements:** R18, R19, KD13.
 - **Dependencies:** U15 (runs only if R19 triggers it).
-- **Files:** `src/unsafe-deep-dive/ffi/bytes-with-schema/` pages, a serialiser module in `textlib`, consumer additions under `ffi/code/{c,python,js}/`.
+- **Files:** `src/unsafe-deep-dive/ffi/bytes-with-schema/` pages, a serialiser module in `textlib-core` with its exports in `textlib`, consumer additions under `ffi/code/{c,python,js}/`.
 - **Approach:** resolve the format from the facilitator's poll first (Open Questions); then one export returning `(ptr, len)` of encoded bytes through out-parameters, one consumer per language decoding it, and a slide on why the compiler cannot verify bytes. Written format-agnostic until the poll settles.
 - **Test scenarios:**
   - Each consumer decodes the bytes to the same structured answer for the statement example.
@@ -666,12 +671,14 @@ Phase A (Day 1, no code): U1, U2, U3. Phase B (code, no slides): U4, U5, U6, U7,
 
 ## Verification Contract
 
+`cargo xtask install-tools` builds `mdbook` and the four preprocessors with Bazel and needs Bazel on the path; it is what the book-build, rust-tests and slide-size rows depend on. It does not install `dprint`, `yapf3` or the `nightly-2025-09-01` rustfmt that `dprint.json` shells out to; CONTRIBUTING.md installs those separately.
+
 | Check | Command (from repo root unless stated) | Applies to | Done signal |
 |---|---|---|---|
 | Book builds and slide code tests pass | `cargo xtask build`, `cargo xtask rust-tests` (`mdbook test`) | U1, U2, U9 to U14, U16 | no errors; `ignore` fences skipped, libc-only fences compiled |
 | Session totals | `cargo run -p mdbook-course --bin course-schedule` | U1, U15 | two sessions for the course, each at or above 300 after U15 |
-| Untimed pages | script over `src/SUMMARY.md` and frontmatter (U2 adds it under `src/unsafe-deep-dive/setup/`) | U2, U15 | zero pages without `minutes:` |
-| Formatting | `dprint check` after `cargo xtask install-tools` | all | no changes |
+| Untimed pages | an ad-hoc shell loop over the `unsafe-deep-dive/` paths listed in the Unsafe part of `src/SUMMARY.md`, printing each file with no `minutes:` line; run at U2 and U15 and not committed, since `setup/` ships with the book | U2, U15 | zero pages without `minutes:` |
+| Formatting | `dprint check`, with `dprint`, `yapf3` and the `nightly-2025-09-01` rustfmt installed per CONTRIBUTING.md | all | no changes |
 | Slide size | `cargo xtask web-tests --dir book/html` | U9, U10, U13, U14 | no height or width failures for new slides |
 | Day 2 code | `cd src/unsafe-deep-dive && cargo test` and `cargo clippy -- -Dwarnings` | U4 to U8 | green |
 | One-command check | `cd src/unsafe-deep-dive && cargo run -p ffi-check` | U4 to U8, U11 to U13, U16 | every step pass, exit 0 (AE5) |
