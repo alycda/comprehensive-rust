@@ -23,7 +23,7 @@ execution: code
 
 ### Summary
 
-Complete the deep dive to its declared 600-minute target: time every Day 1 slide, write the title-only stubs, wire the six orphan pages, and build Day 2 as an FFI capstone that carries a small text-processing library across four boundaries in turn. Wrap C, export to C, call it from Python over the generated header, and export raw wasm32 functions driven from JavaScript. A React Native segment is written as timing buffer and kept or cut after the dry run.
+Complete the deep dive to its declared 600-minute target: time every Day 1 slide, write the title-only stubs, wire the six orphan pages, and build Day 2 as an FFI capstone that carries a small text-processing library across four boundaries in turn. Wrap C, export to C, call it from Python over the generated header, and export raw wasm32 functions driven from JavaScript. A React Native segment is authored as timing buffer only if the dry run leaves Day 2 short of its target.
 
 ### Problem Frame
 
@@ -47,7 +47,7 @@ The facilitator has already built and delivered the missing half as a half-day R
 - KD10. **Non-FFI segments are timed and their stubs written; no new non-FFI segments.** The facilitator's material covers FFI only. Governs R2, R3, R4.
 - KD11. **A tool-agnostic prework setup page with a self-check.** Chosen over Nix-first, install-during-class, and instructor-only toolchain: students install five tools before Day 1 and Nix is mentioned as one route. Governs R27 to R29.
 - KD12. **Standard course headers on every new page; no provenance lines.** Chosen over per-page attribution to the facilitator or upstream-ready attribution notes. Governs R30.
-- KD13. **React Native is a stretch segment, written and timed, kept only if the dry run leaves the total short of 600 minutes.** Governs R18, R19.
+- KD13. **React Native is a stretch segment, authored only if the dry run leaves Day 2 under its 300-minute target.** It has no workshop source and needs a mobile toolchain students do not have, so it is a facilitator demo; writing it before the dry run would spend the plan's largest authoring effort on a segment its own rule may remove. Governs R18, R19.
 - KD14. **Source material is alycda/rustconf2026 on main.** The develop branch's Fortran, R and Godot tracks and the private aoc-ffi-workshop repository are not inputs.
 
 <!-- ce-section: work-relationships -->
@@ -91,8 +91,8 @@ This plan covers the whole Unsafe Deep Dive in this fork; the breakdown below is
 - R15. A slide and exercise call the exported library from Python through `cffi` using the generated header as the declaration source.
 - R16. A slide and exercise export the library as raw wasm32 functions and drive them from JavaScript under Node, passing text in and results out through linear memory with exported allocation functions.
 - R17. A tooling slide names the generators by direction: bindgen, cbindgen, cxx and autocxx, UniFFI, PyO3, wasm-bindgen and the component model, and names JSI and TurboModules as the React Native boundary.
-- R18. A React Native stretch segment shows the same C-shaped library reached from a React Native app, carries its own `minutes:` values, and is marked as cut-candidate in its speaker notes.
-- R19. When the dry run shows the Day 2 total at or above its 300-minute target without the React Native segment, the segment is removed from the table of contents and kept in the tree.
+- R18. When the dry run leaves Day 2 under its target, a React Native stretch segment is authored that shows the same C-shaped library reached from a React Native app as a facilitator demo, carries its own `minutes:` values, and is marked as a stretch segment in its speaker notes.
+- R19. When the dry run shows the Day 2 total at or above its 300-minute target, the React Native segment is not authored; when it is under, the segment is authored and timed and a second dry run confirms the total. When a day exceeds its target after the dry run, slides are demoted to More to Explore speaker-note material in a named order, starting on Day 2 with R12 (C shims) and R13 (C library state), and F3 records the resulting order.
 
 **Exercises**
 
@@ -124,7 +124,7 @@ This plan covers the whole Unsafe Deep Dive in this fork; the breakdown below is
   - **Actors:** A1, A2
   - **Steps:** Wrap `abs`, `rand` and `qsort` from Rust. Write a safe wrapper over an opaque handle. Export the running example to C and read the generated header aloud. Call it from a C harness with hostile input first. Complete the Python scaffold from the header. Complete the JavaScript scaffold against the wasm32 build. Tooling slide, then React Native if kept.
   - **Outcome:** Every student has one library crossing four boundaries, two of them in languages they did not know that morning.
-  - **Covered by:** R6 to R10, R15 to R18, R20, R21, R33
+  - **Covered by:** R6 to R18, R20, R21, R33
 
 - F2. Prework setup
   - **Trigger:** A student receives the course link before Day 1.
@@ -136,7 +136,7 @@ This plan covers the whole Unsafe Deep Dive in this fork; the breakdown below is
 - F3. Dry run and cut decision
   - **Trigger:** The facilitator rehearses both days with the completed material.
   - **Actors:** A1
-  - **Steps:** Teach from the fork, correct `minutes:` values from observed timing, read each day's outline total, apply R19 to the Day 2 total.
+  - **Steps:** Teach from the fork, correct `minutes:` values from observed timing, read each day's outline total, apply R19 in both directions: author React Native only on a Day 2 shortfall, demote slides in the named order on an over-run.
   - **Outcome:** The table of contents matches what the two days hold.
   - **Covered by:** R1, R2, R18, R19
 
@@ -160,11 +160,11 @@ This plan covers the whole Unsafe Deep Dive in this fork; the breakdown below is
   - **When** they fill the declaration from the generated header and the one call
   - **Then** the scaffold runs and prints the statement example's answer, and the solution page explains the encoding line they had to add.
 
-- AE4. React Native kept or cut
+- AE4. React Native authored or not
   - **Covers R18, R19.**
   - **Given** the dry run has corrected every `minutes:` value
-  - **When** the Day 2 outline total without the React Native segment is 300 or more
-  - **Then** the segment leaves the table of contents and stays in the tree; otherwise it stays listed.
+  - **When** the Day 2 outline total is 300 or more
+  - **Then** the React Native segment is not authored and the table of contents does not list it; otherwise it is authored, timed, listed, and a second dry run confirms the Day 2 total.
 
 - AE6. A panic only a foreign caller can reach
   - **Covers R23.**
