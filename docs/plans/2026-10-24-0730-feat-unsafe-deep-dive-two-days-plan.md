@@ -27,7 +27,7 @@ Complete the deep dive to its declared 600-minute target: time every Day 1 slide
 
 ### Problem Frame
 
-The deep dive declares a 600-minute target in its welcome page, but the slides listed in the table of contents sum to 337 minutes, and 25 of the 77 listed slides carry no timing at all. Five pages are a licence comment and a title. Six written pages are not reachable from the table of contents.
+The deep dive declares a 600-minute target in its welcome page, but the slides listed in the table of contents sum to 337 minutes, and 25 of the 77 listed slides carry no timing at all. Six pages are a licence comment and a title. Six written pages are not reachable from the table of contents.
 
 The FFI segment covers one direction only, Rust calling C. Nothing shows Rust exposed to C, a callback handed to C, an error or a panic crossing the boundary, or a safe wrapper over an opaque handle, although the segment's own comparison tables name every one of those. Both FFI exercises end by asking learners to write the safe wrapper and give no model answer.
 
@@ -71,10 +71,10 @@ This plan covers the whole Unsafe Deep Dive in this fork; the breakdown below is
 
 **Course structure and timing**
 
-- R1. The course outline for the Unsafe Deep Dive reports at least 600 minutes of content when the React Native segment is included.
+- R1. The course outline for the Unsafe Deep Dive reports at least 600 minutes of content when the React Native segment is included; the course-structure page's outline directive is corrected to name the course as `welcome.md` declares it, since today it names a course that does not exist and renders nothing.
 - R2. Every page listed under the Unsafe section of the table of contents carries a `minutes:` value.
 - R3. The six written pages not currently reachable from the table of contents are reachable from it, each in the segment its content belongs to.
-- R4. The five title-only pages carry slide content and speaker notes consistent with the segment around them.
+- R4. The six title-only pages carry slide content and speaker notes consistent with the segment around them.
 - R5. The Initialization and Pinning segments each gain one short cross-link slide pointing forward to the Day 2 moment that depends on them.
 
 **FFI segment content**
@@ -82,7 +82,7 @@ This plan covers the whole Unsafe Deep Dive in this fork; the breakdown below is
 - R6. A slide wraps `qsort(3)` to teach a C function pointer type, a Rust-defined callback handed to C, and a slice crossing as pointer plus length plus element size, with the `a - b` comparator overflow as the live beat.
 - R7. A slide shows Rust exposed to C: a dynamic library crate, an exported unmangled function, the four-step ingress for a C string, and a header generated from the Rust.
 - R8. A slide teaches error reporting across the boundary as status codes and out-parameters, distinguishing input refused by the boundary from failure in the solver.
-- R9. A slide teaches that a panic reaching an `extern "C"` frame is undefined behaviour and that current Rust aborts, that `catch_unwind` is a backstop rather than a guard, and that checked arithmetic is the only overflow guard independent of build profile.
+- R9. A slide teaches that a panic reaching an `extern "C"` frame aborts the process on Rust 1.81 and later (before that it was undefined behaviour), that `extern "C-unwind"` is the ABI that lets a panic cross, that `catch_unwind` is a backstop rather than a guard, and that checked arithmetic is the only overflow guard independent of build profile.
 - R10. A slide gives the model answer the two existing exercises lack: an opaque handle wrapped in a type whose destructor frees it, with a hand-freed version shown first for code review.
 - R11. A slide shows compiling C from a build script with the `cc` crate behind a feature gate, replacing the setup page's Bazel TODO.
 - R12. A slide explains when a C shim is the binding: macro-only libraries, version-renamed symbols, and struct layouts that depend on how the library was built.
@@ -201,7 +201,7 @@ This plan covers the whole Unsafe Deep Dive in this fork; the breakdown below is
 - The source code and prose come from alycda/rustconf2026 on main, which is MIT-licensed by the facilitator; relicensing under the course headers is the facilitator's choice (KD12).
 - Students arrive with Rust fundamentals and a machine on which they can install the five tools.
 - Minutes written for the 25 untimed slides and for all new slides are estimates until the dry run corrects them.
-- The course tooling computes session totals from per-slide `minutes:` frontmatter and renders them through the outline macro, so R1 and R2 are checkable from the built book.
+- The course tooling computes session totals from per-slide `minutes:` frontmatter and renders them through the outline macro. The directive in `src/running-the-course/course-structure.md` currently asks for a course named `Unsafe` while `welcome.md` declares `Unsafe Deep Dive`, so the total renders as not found until R1's correction lands; after that, R1 and R2 are checkable from the built book.
 - The playground links the C standard library, so `abs`, `rand` and `qsort` slides can stay runnable there.
 - Advent of Code's request that inputs and puzzle text not be republished holds for this repository.
 
@@ -217,7 +217,7 @@ This plan covers the whole Unsafe Deep Dive in this fork; the breakdown below is
 
 ### Sources and Research
 
-- Deep dive state: `src/unsafe-deep-dive/welcome.md` (target), `src/SUMMARY.md` Unsafe section, title-only pages `src/unsafe-deep-dive/ffi.md`, `ffi/type-safety.md`, `initialization.md`, `safety-preconditions/semantic-preconditions.md`, `safety-preconditions/u8-to-bool.md`; orphan pages `motivations.md`, `introduction/defining-unsafe-rust.md`, `pinning/README.md`, `case-studies.md`, `case-studies/intrusive-linked-list.md`, `ffi/README.md`.
+- Deep dive state: `src/unsafe-deep-dive/welcome.md` (target), `src/SUMMARY.md` Unsafe section, title-only pages `src/unsafe-deep-dive/ffi.md`, `ffi/type-safety.md`, `initialization.md`, `safety-preconditions/semantic-preconditions.md`, `safety-preconditions/u8-to-bool.md`, `rules-of-the-game/soundness-proof.md`; orphan pages `motivations.md`, `introduction/defining-unsafe-rust.md`, `pinning/README.md`, `case-studies.md`, `case-studies/intrusive-linked-list.md`, `ffi/README.md`.
 - Existing FFI slides whose tables name the gaps: `src/unsafe-deep-dive/ffi/language-differences/rust-and-c.md`, `rust-and-cpp.md`, `cpp-and-c.md`; existing exercises `ffi/c-library-example.md`, `ffi/cpp-library-example.md`; setup TODO in `src/unsafe-deep-dive/setup.md`.
 - Course conventions: `STYLE.md`, `CONTRIBUTING.md`, `GEMINI.md`; test gates in `xtask/src/main.rs`; timing in `mdbook-course/src/course.rs`.
 - Existing pattern for a workspace crate that compiles C++: `third_party/cxx/blobstore`.
